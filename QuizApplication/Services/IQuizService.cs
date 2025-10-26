@@ -26,11 +26,8 @@ namespace QuizApplication.Services
 
         public TimeSpan CalculateQuizDuration(Quiz quiz)
         {
-            // 2 minutes per question or 10 minutes total, whichever is longer
-            var perQuestionTime = TimeSpan.FromMinutes(2 * quiz.Questions.Count);
-            var totalTime = TimeSpan.FromMinutes(10);
-
-            return perQuestionTime > totalTime ? perQuestionTime : totalTime;
+            // 2 minutes per question
+            return TimeSpan.FromMinutes(2 * quiz.Questions.Count);
         }
 
         public int GetTimePerQuestion(Quiz quiz)

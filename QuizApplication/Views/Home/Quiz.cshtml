@@ -4,6 +4,10 @@
     var question = Model.Quiz.Questions[Model.CurrentQuestionIndex];
     var progress = ((Model.CurrentQuestionIndex + 1) / (double)Model.Quiz.Questions.Count) * 100;
     var selectedAnswerId = Model.UserAnswers.ContainsKey(question.Id) ? Model.UserAnswers[question.Id] : 0;
+
+    // Calculate time per question (2 minutes)
+    var timePerQuestion = TimeSpan.FromMinutes(2);
+    var totalQuizTime = TimeSpan.FromMinutes(2 * Model.Quiz.Questions.Count);
 }
 
 <div class="container mt-4">
@@ -11,14 +15,20 @@
         <div class="col-md-8">
             <!-- Timer Display -->
             <div class="text-center mb-4">
+                <div class="timer-info mb-2">
+                    <small class="text-muted">
+                        <i class="fas fa-info-circle"></i>
+                        You have <strong>2 minutes</strong> per question
+                    </small>
+                </div>
                 <div id="timer" class="timer-container">
                     <i class="fas fa-clock"></i>
-                    Time Remaining:
-                    <span id="time-remaining">@Model.TimeRemaining.ToString(@"mm\:ss")</span>
+                    Time Remaining for This Question:
+                    <span id="time-remaining">02:00</span>
                 </div>
             </div>
 
-            <!-- Progress Bar and Quiz Content (same as before) -->
+            <!-- Progress Bar -->
             <div class="mb-4">
                 <div class="d-flex justify-content-between mb-2">
                     <span>Question @(Model.CurrentQuestionIndex + 1) of @Model.Quiz.Questions.Count</span>
@@ -31,6 +41,7 @@
                 </div>
             </div>
 
+            <!-- Quiz Card -->
             <div class="card shadow">
                 <div class="card-header bg-primary text-white">
                     <h4 class="mb-0">@Model.Quiz.Title</h4>
@@ -99,6 +110,7 @@
                 </div>
             </div>
 
+            <!-- Action Buttons -->
             <div class="text-center mt-3">
                 <form method="post" asp-action="SubmitQuiz" class="d-inline">
                     <input type="hidden" name="quizId" value="@Model.Quiz.Id" />
@@ -123,8 +135,8 @@
             </div>
             <div class="modal-body text-center">
                 <i class="fas fa-clock fa-3x text-danger mb-3"></i>
-                <h4>Your time has expired!</h4>
-                <p>Your quiz will be automatically submitted in 3 seconds...</p>
+                <h4>Time for this question has expired!</h4>
+                <p>Moving to next question in 3 seconds...</p>
             </div>
         </div>
     </div>
@@ -132,11 +144,13 @@
 
 @section Scripts {
     <script>
-        class QuizTimer {
-            constructor(totalMinutes, quizId) {
-                this.totalSeconds = totalMinutes * 60;
-                this.remainingSeconds = this.totalSeconds;
+        class QuestionTimer {
+            constructor(questionIndex, totalQuestions, quizId) {
+                this.questionIndex = questionIndex;
+                this.totalQuestions = totalQuestions;
                 this.quizId = quizId;
+                this.timePerQuestion = 2 * 60; // 2 minutes in seconds
+                this.remainingSeconds = this.timePerQuestion;
                 this.timerInterval = null;
                 this.isRunning = false;
             }
@@ -154,11 +168,13 @@
                         this.onTimeUp();
                     }
 
-                    if (this.remainingSeconds === 60) {
+                    // Warning when 30 seconds left
+                    if (this.remainingSeconds === 30) {
                         this.showWarning();
                     }
 
-                    if (this.remainingSeconds === 30) {
+                    // Critical warning when 10 seconds left
+                    if (this.remainingSeconds === 10) {
                         this.showCriticalWarning();
                     }
                 }, 1000);
@@ -184,10 +200,10 @@
 
                 const timerContainer = document.getElementById('timer');
                 if (timerContainer) {
-                    if (this.remainingSeconds <= 30) {
+                    if (this.remainingSeconds <= 10) {
                         timerContainer.classList.add('timer-critical');
                         timerContainer.classList.remove('timer-warning');
-                    } else if (this.remainingSeconds <= 60) {
+                    } else if (this.remainingSeconds <= 30) {
                         timerContainer.classList.add('timer-warning');
                         timerContainer.classList.remove('timer-critical');
                     } else {
@@ -208,27 +224,70 @@
                 const timeUpModal = new bootstrap.Modal(document.getElementById('timeUpModal'));
                 timeUpModal.show();
 
+                // Auto-move to next question after 3 seconds
                 setTimeout(() => {
-                    window.location.href = '@Url.Action("TimeUp", "Home")' + '?quizId=' + this.quizId;
+                    this.autoMoveToNextQuestion();
                 }, 3000);
+            }
+
+            autoMoveToNextQuestion() {
+                // If this is not the last question, move to next
+                if (this.questionIndex < this.totalQuestions - 1) {
+                    // Submit the form with "Next" action
+                    const form = document.getElementById('quiz-form');
+                    const nextButton = form.querySelector('button[value="Next"]');
+                    if (nextButton) {
+                        // Set action to "Next" and submit
+                        const actionInput = document.createElement('input');
+                        actionInput.type = 'hidden';
+                        actionInput.name = 'action';
+                        actionInput.value = 'Next';
+                        form.appendChild(actionInput);
+                        form.submit();
+                    }
+                } else {
+                    // If it's the last question, submit the quiz
+                    const form = document.getElementById('quiz-form');
+                    const submitButton = form.querySelector('button[value="Submit"]');
+                    if (submitButton) {
+                        const actionInput = document.createElement('input');
+                        actionInput.type = 'hidden';
+                        actionInput.name = 'action';
+                        actionInput.value = 'Submit';
+                        form.appendChild(actionInput);
+                        form.submit();
+                    }
+                }
             }
         }
 
+        // Initialize timer when page loads
         document.addEventListener('DOMContentLoaded', function() {
+            const currentQuestionIndex = @Model.CurrentQuestionIndex;
             const totalQuestions = @Model.Quiz.Questions.Count;
-            const totalMinutes = Math.max(10, 2 * totalQuestions);
             const quizId = @Model.Quiz.Id;
 
-            const quizTimer = new QuizTimer(totalMinutes, quizId);
-            quizTimer.start();
+            const questionTimer = new QuestionTimer(currentQuestionIndex, totalQuestions, quizId);
+            questionTimer.start();
 
-            window.quizTimer = quizTimer;
+            // Store timer reference
+            window.questionTimer = questionTimer;
         });
 
+        // Stop timer when form is submitted normally
         document.getElementById('quiz-form')?.addEventListener('submit', function() {
-            if (window.quizTimer) {
-                window.quizTimer.stop();
+            if (window.questionTimer) {
+                window.questionTimer.stop();
             }
+        });
+
+        // Reset timer when navigating between questions manually
+        document.querySelectorAll('button[type="submit"]').forEach(button => {
+            button.addEventListener('click', function() {
+                if (window.questionTimer) {
+                    window.questionTimer.stop();
+                }
+            });
         });
     </script>
 }

@@ -116,6 +116,11 @@ namespace QuizApplication.Controllers
                 return CalculateResults(quiz, userAnswers);
             }
 
+            // Reset timer for the new question (2 minutes per question)
+            var timePerQuestion = TimeSpan.FromMinutes(2);
+            _timerService.StopTimer($"quiz_{model.Quiz.Id}");
+            _timerService.StartTimer($"quiz_{model.Quiz.Id}", timePerQuestion);
+
             // Get remaining time
             var remainingTime = _timerService.GetRemainingTime($"quiz_{model.Quiz.Id}");
 
