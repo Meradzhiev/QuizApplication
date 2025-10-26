@@ -1,0 +1,234 @@
+﻿@model QuizApplication.Models.QuizViewModel
+@{
+    ViewData["Title"] = Model.Quiz.Title;
+    var question = Model.Quiz.Questions[Model.CurrentQuestionIndex];
+    var progress = ((Model.CurrentQuestionIndex + 1) / (double)Model.Quiz.Questions.Count) * 100;
+    var selectedAnswerId = Model.UserAnswers.ContainsKey(question.Id) ? Model.UserAnswers[question.Id] : 0;
+}
+
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <!-- Timer Display -->
+            <div class="text-center mb-4">
+                <div id="timer" class="timer-container">
+                    <i class="fas fa-clock"></i>
+                    Time Remaining:
+                    <span id="time-remaining">@Model.TimeRemaining.ToString(@"mm\:ss")</span>
+                </div>
+            </div>
+
+            <!-- Progress Bar and Quiz Content (same as before) -->
+            <div class="mb-4">
+                <div class="d-flex justify-content-between mb-2">
+                    <span>Question @(Model.CurrentQuestionIndex + 1) of @Model.Quiz.Questions.Count</span>
+                    <span>@Math.Round(progress)%</span>
+                </div>
+                <div class="progress" style="height: 10px;">
+                    <div class="progress-bar bg-primary" role="progressbar"
+                         style="width: @progress%"
+                         aria-valuenow="@progress" aria-valuemin="0" aria-valuemax="100"></div>
+                </div>
+            </div>
+
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">@Model.Quiz.Title</h4>
+                </div>
+                <div class="card-body">
+                    <form method="post" asp-action="SubmitAnswer" id="quiz-form">
+                        <input type="hidden" name="Quiz.Id" value="@Model.Quiz.Id" />
+                        <input type="hidden" name="CurrentQuestionIndex" value="@Model.CurrentQuestionIndex" />
+
+                        @foreach (var kvp in Model.UserAnswers)
+                        {
+                            <input type="hidden" name="UserAnswers[@kvp.Key]" value="@kvp.Value" />
+                        }
+
+                        <h5 class="card-title text-dark mb-4">@question.Text</h5>
+
+                        <div class="list-group">
+                            @foreach (var answer in question.Answers)
+                            {
+                                var isChecked = selectedAnswerId == answer.Id;
+
+                                <label class="list-group-item list-group-item-action">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio"
+                                               name="SelectedAnswerId"
+                                               value="@answer.Id"
+                                               id="answer-@answer.Id"
+                                               @(isChecked ? "checked" : "") />
+                                        <label class="form-check-label w-100" for="answer-@answer.Id">
+                                            <strong>@answer.Letter.</strong> @answer.Text
+                                        </label>
+                                    </div>
+                                </label>
+                            }
+                        </div>
+
+                        <div class="d-flex justify-content-between mt-4">
+                            @if (Model.CurrentQuestionIndex > 0)
+                            {
+                                <button type="submit" name="action" value="Previous"
+                                        class="btn btn-outline-primary">
+                                    ← Previous
+                                </button>
+                            }
+                            else
+                            {
+                                <div></div>
+                            }
+
+                            @if (Model.CurrentQuestionIndex == Model.Quiz.Questions.Count - 1)
+                            {
+                                <button type="submit" name="action" value="Submit"
+                                        class="btn btn-success">
+                                    Submit Quiz ✓
+                                </button>
+                            }
+                            else
+                            {
+                                <button type="submit" name="action" value="Next"
+                                        class="btn btn-primary">
+                                    Next →
+                                </button>
+                            }
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="text-center mt-3">
+                <form method="post" asp-action="SubmitQuiz" class="d-inline">
+                    <input type="hidden" name="quizId" value="@Model.Quiz.Id" />
+                    <button type="submit" class="btn btn-warning">Submit Now</button>
+                </form>
+                <a href="@Url.Action("RetakeQuiz", new { id = Model.Quiz.Id })"
+                   class="btn btn-outline-warning">
+                    Retake Quiz
+                </a>
+                <a href="@Url.Action("Index")" class="btn btn-outline-secondary">Back to Quizzes</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Time Up Modal -->
+<div class="modal fade" id="timeUpModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">Time's Up!</h5>
+            </div>
+            <div class="modal-body text-center">
+                <i class="fas fa-clock fa-3x text-danger mb-3"></i>
+                <h4>Your time has expired!</h4>
+                <p>Your quiz will be automatically submitted in 3 seconds...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        class QuizTimer {
+            constructor(totalMinutes, quizId) {
+                this.totalSeconds = totalMinutes * 60;
+                this.remainingSeconds = this.totalSeconds;
+                this.quizId = quizId;
+                this.timerInterval = null;
+                this.isRunning = false;
+            }
+
+            start() {
+                if (this.isRunning) return;
+
+                this.isRunning = true;
+                this.timerInterval = setInterval(() => {
+                    this.remainingSeconds--;
+                    this.updateDisplay();
+
+                    if (this.remainingSeconds <= 0) {
+                        this.stop();
+                        this.onTimeUp();
+                    }
+
+                    if (this.remainingSeconds === 60) {
+                        this.showWarning();
+                    }
+
+                    if (this.remainingSeconds === 30) {
+                        this.showCriticalWarning();
+                    }
+                }, 1000);
+            }
+
+            stop() {
+                this.isRunning = false;
+                if (this.timerInterval) {
+                    clearInterval(this.timerInterval);
+                    this.timerInterval = null;
+                }
+            }
+
+            updateDisplay() {
+                const minutes = Math.floor(this.remainingSeconds / 60);
+                const seconds = this.remainingSeconds % 60;
+                const timeString = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+
+                const timerElement = document.getElementById('time-remaining');
+                if (timerElement) {
+                    timerElement.textContent = timeString;
+                }
+
+                const timerContainer = document.getElementById('timer');
+                if (timerContainer) {
+                    if (this.remainingSeconds <= 30) {
+                        timerContainer.classList.add('timer-critical');
+                        timerContainer.classList.remove('timer-warning');
+                    } else if (this.remainingSeconds <= 60) {
+                        timerContainer.classList.add('timer-warning');
+                        timerContainer.classList.remove('timer-critical');
+                    } else {
+                        timerContainer.classList.remove('timer-warning', 'timer-critical');
+                    }
+                }
+            }
+
+            showWarning() {
+                // Visual warning only
+            }
+
+            showCriticalWarning() {
+                // More intense visual warning
+            }
+
+            onTimeUp() {
+                const timeUpModal = new bootstrap.Modal(document.getElementById('timeUpModal'));
+                timeUpModal.show();
+
+                setTimeout(() => {
+                    window.location.href = '@Url.Action("TimeUp", "Home")' + '?quizId=' + this.quizId;
+                }, 3000);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const totalQuestions = @Model.Quiz.Questions.Count;
+            const totalMinutes = Math.max(10, 2 * totalQuestions);
+            const quizId = @Model.Quiz.Id;
+
+            const quizTimer = new QuizTimer(totalMinutes, quizId);
+            quizTimer.start();
+
+            window.quizTimer = quizTimer;
+        });
+
+        document.getElementById('quiz-form')?.addEventListener('submit', function() {
+            if (window.quizTimer) {
+                window.quizTimer.stop();
+            }
+        });
+    </script>
+}

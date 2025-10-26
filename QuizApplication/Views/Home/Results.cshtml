@@ -1,0 +1,88 @@
+﻿@model QuizApplication.Models.QuizResult
+@{
+    ViewData["Title"] = "Quiz Results";
+    var message = Model.Percentage >= 80 ? "Excellent! 🎉" :
+                  Model.Percentage >= 60 ? "Good job! 👍" :
+                  Model.Percentage >= 40 ? "Not bad! 😊" :
+                  "Keep practicing! 💪";
+}
+@if (Model.WasTimeUp)
+{
+    <div class="alert alert-warning text-center">
+        <h4><i class="fas fa-clock"></i> Time Expired!</h4>
+        <p>Your quiz was automatically submitted when the time ran out.</p>
+    </div>
+}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header bg-success text-white text-center">
+                    <h3 class="mb-0">Quiz Completed!</h3>
+                </div>
+                <div class="card-body text-center">
+                    <!-- Score Display -->
+                    <div class="mb-4">
+                        <h2 class="text-primary">@Model.Score out of @Model.TotalQuestions</h2>
+                        <div class="progress mb-3" style="height: 20px;">
+                            <div class="progress-bar @(Model.Percentage >= 60 ? "bg-success" : "bg-warning")"
+                                 role="progressbar"
+                                 style="width: @Model.Percentage%"
+                                 aria-valuenow="@Model.Percentage"
+                                 aria-valuemin="0"
+                                 aria-valuemax="100">
+                                @Math.Round(Model.Percentage)%
+                            </div>
+                        </div>
+                        <h4 class="text-dark">@message</h4>
+                    </div>
+
+                    <!-- Detailed Results -->
+                    <div class="text-left">
+                        <h5 class="border-bottom pb-2">Detailed Results:</h5>
+                        @foreach (var question in Model.Quiz.Questions)
+                        {
+                            var userAnswerId = Model.UserAnswers.ContainsKey(question.Id) ?
+                            Model.UserAnswers[question.Id] : 0;
+                            var isCorrect = userAnswerId == question.CorrectAnswerId;
+                            var userAnswer = question.Answers.FirstOrDefault(a => a.Id == userAnswerId);
+                            var correctAnswer = question.Answers.FirstOrDefault(a => a.Id == question.CorrectAnswerId);
+
+                            <div class="card mb-3 border-@(isCorrect ? "success" : "danger")">
+                                <div class="card-body">
+                                    <h6 class="card-title">@question.Text</h6>
+                                    <p class="mb-1">
+                                        <strong>Your answer:</strong>
+                                        <span class="text-@(isCorrect ? "success" : "danger")">
+                                            @(userAnswer != null ? $"{userAnswer.Letter}. {userAnswer.Text}" : "No answer")
+                                        </span>
+                                    </p>
+                                    @if (!isCorrect)
+                                    {
+                                        <p class="mb-0">
+                                            <strong>Correct answer:</strong>
+                                            <span class="text-success">
+                                                @(correctAnswer != null ? $"{correctAnswer.Letter}. {correctAnswer.Text}" : "N/A")
+                                            </span>
+                                        </p>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="mt-4">
+                        <a href="@Url.Action("RetakeQuiz", new { id = Model.Quiz.Id })"
+                           class="btn btn-primary btn-lg mr-3">
+                            Retake Quiz
+                        </a>
+                        <a href="@Url.Action("Index")" class="btn btn-outline-secondary btn-lg">
+                            Back to Quizzes
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

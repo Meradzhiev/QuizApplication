@@ -1,0 +1,61 @@
+{
+  "Id": 2,
+  "Title": "JavaScript Fundamentals Quiz",
+  "Description": "Test your JavaScript knowledge",
+  "Questions": [
+    {
+      "Id": 1,
+      "Text": "Which keyword is used to declare a variable in JavaScript?",
+      "Answers": [
+        {
+          "Id": 1,
+          "Text": "var",
+          "Letter": "A"
+        },
+        {
+          "Id": 2,
+          "Text": "variable",
+          "Letter": "B"
+        },
+        {
+          "Id": 3,
+          "Text": "v",
+          "Letter": "C"
+        },
+        {
+          "Id": 4,
+          "Text": "let",
+          "Letter": "D"
+        }
+      ],
+      "CorrectAnswerId": 1
+    },
+    {
+      "Id": 2,
+      "Text": "What does DOM stand for?",
+      "Answers": [
+        {
+          "Id": 5,
+          "Text": "Document Object Model",
+          "Letter": "A"
+        },
+        {
+          "Id": 6,
+          "Text": "Digital Object Management",
+          "Letter": "B"
+        },
+        {
+          "Id": 7,
+          "Text": "Data Object Model",
+          "Letter": "C"
+        },
+        {
+          "Id": 8,
+          "Text": "Document Orientation Mode",
+          "Letter": "D"
+        }
+      ],
+      "CorrectAnswerId": 5
+    }
+  ]
+}

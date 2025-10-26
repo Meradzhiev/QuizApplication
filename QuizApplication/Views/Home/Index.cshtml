@@ -1,0 +1,42 @@
+﻿@model List<QuizApplication.Models.Quiz>
+@{
+    ViewData["Title"] = "Quiz Application";
+}
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="text-center mb-5">
+                <h1 class="display-4 text-primary">Welcome to QuizMaster</h1>
+                <p class="lead">Test your knowledge with our interactive quizzes</p>
+            </div>
+
+            <div class="row">
+                @foreach (var quiz in Model)
+                {
+                    <div class="col-md-6 mb-4">
+                        <div class="card shadow-sm h-100">
+                            <div class="card-body">
+                                <h5 class="card-title text-primary">@quiz.Title</h5>
+                                <p class="card-text">@quiz.Description</p>
+                                <p class="text-muted">@quiz.Questions.Count questions</p>
+                            </div>
+                            <div class="card-footer bg-transparent">
+                                <a href="@Url.Action("StartQuiz", new { id = quiz.Id })"
+                                   class="btn btn-primary btn-block">Start Quiz</a>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            @if (!Model.Any())
+            {
+                <div class="alert alert-warning text-center">
+                    <h4>No quizzes available</h4>
+                    <p>Please check back later or add quiz files to the Data folder.</p>
+                </div>
+            }
+        </div>
+    </div>
+</div>
